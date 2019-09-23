@@ -80,9 +80,8 @@ def main():
             track_number = parts[-1]
             disc_number = (parts[-2], max(disc_nums))
         else:
-            disc_number = 0
+            disc_number = (1, 1)
             track_number = i + 1
-            assert False, repr(parts)
         print("#%d.%d\t%s" % (disc_number[0], track_number, file_name))
         if args.reverse_disc_and_track:
             # OPPOSITE SINCE SANDISK SPORT PLUS HAS A MORONIC SORTING
