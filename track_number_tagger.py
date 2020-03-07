@@ -17,7 +17,12 @@ def split_in_strings_and_numbers(filename):
     parts = re.split(r"[ _\.-]", filename)
     for part in parts:
         try:
-            number = int(part, 10)
+            if part.startswith("D") and len(part) > 1 and part[1] in "0123456789":
+                # Disk prefix?
+                number = int(part[1:], 10)
+                res.append("D")
+            else:
+                number = int(part, 10)
             res.append(number)
         except ValueError:
             res.append(part)
@@ -74,7 +79,14 @@ def main():
         if args.title:
             mp3.tag.title = "%03d - %s" % ((i + 1), args.title)
 
-        if (len(parts) > 1 and
+        if (len(parts) > 2 and
+                isinstance(parts[-1], int) and
+                isinstance(parts[-2], int) and
+                isinstance(parts[-3], int)):
+            # Assume disc, track, total_tracks_on_disk
+            track_number = parts[-2]
+            disc_number = (parts[-3], max(disc_nums))
+        elif (len(parts) > 1 and
                 isinstance(parts[-1], int) and
                 isinstance(parts[-2], int)):
             track_number = parts[-1]
