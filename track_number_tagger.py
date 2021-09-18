@@ -93,7 +93,7 @@ def main():
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--artist")
     parser.add_argument("--album")
-    parser.add_argument("--title")
+    parser.add_argument("--title", required=True)
     parser.add_argument("--max-track-number", default=127, type=int)
 
     args = parser.parse_args()
