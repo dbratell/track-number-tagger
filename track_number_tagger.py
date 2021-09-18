@@ -141,7 +141,7 @@ def main():
             mp3.tag.title = "%03d - %s" % ((i + 1), args.title)
 
 
-        new_file_name = mp3.tag.title + ".mp3"
+        new_file_name = "%03d - %s.mp3" % ((i + 1), args.title)
         print("#%d.%d\t%s" % (disc_number, track_number, file_name), end="")
         if args.rename_with_number and file_name != new_file_name:
             print("\t->\t%s" % new_file_name)
