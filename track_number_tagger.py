@@ -101,7 +101,6 @@ def main():
     mp3_files = os.listdir(args.directory)
 
     mp3_files_in_order = filter_and_order(args.directory, mp3_files)
-    max_disc_number = 1
     max_track_number = 1
     for i, file_name in enumerate(mp3_files_in_order):
         name_without_ext = file_name[:-4]
@@ -111,21 +110,13 @@ def main():
         (disc_number,
          track_number) = extract_disc_and_track_number_from_split_name(parts,
                                                                        i + 1)
-        max_disc_number = max(disc_number, max_disc_number)
         max_track_number = max(track_number, max_track_number)
 
+    files_with_numbers = {}  # Mapping filename -> (disc_number, track_number)
+    max_disc_number = 1
     for i, file_name in enumerate(mp3_files_in_order):
-        mp3 = eyed3.load(os.path.join(args.directory, file_name))
         name_without_ext = file_name[:-4]
         parts = split_in_strings_and_numbers(name_without_ext)
-        if args.album:
-            mp3.tag.album = args.album
-        if args.artist:
-            mp3.tag.artist = args.artist
-        mp3.tag.genre = "Audiobook"
-        if args.title:
-            mp3.tag.title = "%03d - %s" % ((i + 1), args.title)
-
         (disc_number,
          track_number) = extract_disc_and_track_number_from_split_name(parts,
                                                                        i + 1)
@@ -134,6 +125,21 @@ def main():
          track_number) = recompute_disc_and_track_to_keep_under_limits(
              disc_number, track_number,
              max_track_number, args.max_track_number)
+        max_disc_number = max(disc_number, max_disc_number)
+        files_with_numbers[file_name] = (disc_number, track_number)
+
+    for i, file_name in enumerate(mp3_files_in_order):
+        (disc_number, track_number) = files_with_numbers[file_name]
+
+        mp3 = eyed3.load(os.path.join(args.directory, file_name))
+        if args.album:
+            mp3.tag.album = args.album
+        if args.artist:
+            mp3.tag.artist = args.artist
+        mp3.tag.genre = "Audiobook"
+        if args.title:
+            mp3.tag.title = "%03d - %s" % ((i + 1), args.title)
+
 
         new_file_name = mp3.tag.title + ".mp3"
         print("#%d.%d\t%s" % (disc_number, track_number, file_name), end="")
