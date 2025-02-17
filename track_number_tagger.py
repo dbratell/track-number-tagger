@@ -92,6 +92,8 @@ def main():
     parser.add_argument("--rename-with-number", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--artist")
+    parser.add_argument("--clean-record", action="store_true", 
+                        help="Replace the current ID3 record completely")
     parser.add_argument("--album")
     parser.add_argument("--title", required=True)
     parser.add_argument("--max-track-number", default=127, type=int)
@@ -132,6 +134,8 @@ def main():
         (disc_number, track_number) = files_with_numbers[file_name]
 
         mp3 = eyed3.load(os.path.join(args.directory, file_name))
+        if mp3.tag is None or args.clean_record:
+            mp3.tag = eyed3.id3.tag.Tag()
         if args.album:
             mp3.tag.album = args.album
         if args.artist:
