@@ -11,10 +11,10 @@ import eyed3
 # There is also a library "mp3_tagger" that unfortunately badly
 # corrupted the ID3 blocks with seemingly random binary content.
 
-def split_in_strings_and_numbers(filename):
+def split_in_strings_and_numbers(filename:str):
     """For sorting strings where numbers are sorted numerically rather
        than lexically."""
-    res = []
+    res:list[int|str] = []
     parts = re.split(r"[ _\.-]", filename)
     for part in parts:
         try:
@@ -31,7 +31,7 @@ def split_in_strings_and_numbers(filename):
     return tuple(res)
 
 
-def filter_and_order(directory, file_list):
+def filter_and_order(directory:str, file_list:list[str]):
     """Returns a list of mp3 files in the order they should be listened to
     according to the numbers in the file names."""
     file_list = [x for x in file_list
@@ -40,7 +40,7 @@ def filter_and_order(directory, file_list):
 
     return sorted(file_list, key=split_in_strings_and_numbers)
 
-def extract_disc_and_track_number_from_split_name(parts, default_track_number):
+def extract_disc_and_track_number_from_split_name(parts:list[str], default_track_number:int):
     """Given a file name split into strings and numbers, guess a track
     number and a disc number."""
 
@@ -62,11 +62,12 @@ def extract_disc_and_track_number_from_split_name(parts, default_track_number):
     return (disc_number, track_number)
 
 def recompute_disc_and_track_to_keep_under_limits(
-        disc_number, track_number,
-        max_track_number, highest_allowed_track_number):
+        disc_number:int, track_number:int,
+        max_track_number:int, highest_allowed_track_number:int):
     """Some readers don't like high track numbers. This makes sure track
     numbers stay below limits."""
-    # Higher track numbers than 127 seems to sometimes cause problems?
+    # Higher track numbers than 99 seems to sometimes cause problems so they are
+    # probably stored or read as two character strings.
     split_factor = 1
     if max_track_number > highest_allowed_track_number:
         # args.max_track_number numbers between 1 and
@@ -85,24 +86,24 @@ def recompute_disc_and_track_to_keep_under_limits(
 
 def main():
     """Main function."""
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="Sets disc and track numbers according to file names")
     parser.add_argument("directory")
     parser.add_argument("--reverse-disc-and-track", action="store_true",
                         help="MORON SANDISK SPORT PLUS")
     parser.add_argument("--rename-with-number", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--artist")
-    parser.add_argument("--clean-record", action="store_true", 
+    parser.add_argument("--clean-record", action="store_true",
                         help="Replace the current ID3 record completely")
     parser.add_argument("--album")
     parser.add_argument("--title", required=True)
-    parser.add_argument("--max-track-number", default=127, type=int)
+    parser.add_argument("--max-track-number", default=99, type=int)
 
     args = parser.parse_args()
 
-    mp3_files = os.listdir(args.directory)
+    mp3_files:list[str] = os.listdir(args.directory) # type: ignore
 
-    mp3_files_in_order = filter_and_order(args.directory, mp3_files)
+    mp3_files_in_order = filter_and_order(args.directory, mp3_files) # type:ignore
     max_track_number = 1
     for i, file_name in enumerate(mp3_files_in_order):
         name_without_ext = file_name[:-4]
@@ -114,7 +115,7 @@ def main():
                                                                        i + 1)
         max_track_number = max(track_number, max_track_number)
 
-    files_with_numbers = {}  # Mapping filename -> (disc_number, track_number)
+    files_with_numbers:dict[str,tuple[int,int]] = {}  # Mapping filename -> (disc_number, track_number)
     max_disc_number = 1
     for i, file_name in enumerate(mp3_files_in_order):
         name_without_ext = file_name[:-4]
@@ -134,15 +135,17 @@ def main():
         (disc_number, track_number) = files_with_numbers[file_name]
 
         mp3 = eyed3.load(os.path.join(args.directory, file_name))
-        if mp3.tag is None or args.clean_record:
-            mp3.tag = eyed3.id3.tag.Tag()
+        assert mp3 is not None, f"Unknown file format for {file_name}"
+        if mp3.tag is None or args.clean_record: # type: ignore
+            mp3.tag = eyed3.id3.tag.Tag() # type: ignore
         if args.album:
-            mp3.tag.album = args.album
+            mp3.tag.album = args.album # type: ignore
         if args.artist:
-            mp3.tag.artist = args.artist
-        mp3.tag.genre = "Audiobook"
+            mp3.tag.artist = args.artist # type: ignore
+        mp3.tag.genre = "Audiobook" # type: ignore
         if args.title:
-            mp3.tag.title = "%03d - %s" % ((i + 1), args.title)
+            new_title = "%03d - %s" % ((i + 1), args.title)
+            mp3.tag.title = new_title # type: ignore
 
 
         new_file_name = "%03d - %s.mp3" % ((i + 1), args.title)
