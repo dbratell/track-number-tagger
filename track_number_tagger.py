@@ -6,7 +6,7 @@ import math
 import os
 import re
 
-import eyed3
+import eyed3 # type:ignore
 
 # There is also a library "mp3_tagger" that unfortunately badly
 # corrupted the ID3 blocks with seemingly random binary content.
@@ -40,7 +40,9 @@ def filter_and_order(directory:str, file_list:list[str]):
 
     return sorted(file_list, key=split_in_strings_and_numbers)
 
-def extract_disc_and_track_number_from_split_name(parts:list[str], default_track_number:int):
+import collections.abc
+def extract_disc_and_track_number_from_split_name(parts:collections.abc.Sequence[str|int],
+                                                  default_track_number:int):
     """Given a file name split into strings and numbers, guess a track
     number and a disc number."""
 
@@ -101,10 +103,24 @@ def main():
 
     args = parser.parse_args()
 
-    mp3_files:list[str] = os.listdir(args.directory) # type: ignore
+    track_number_tagger(args.directory, args.max_track_number,
+                        args.album, args.title, args.artist,
+                        args.rename_with_number,
+                        args.clean_record, args.reverse_disc_and_track,
+                        args.dry_run)
 
-    mp3_files_in_order = filter_and_order(args.directory, mp3_files) # type:ignore
-    max_track_number = 1
+def track_number_tagger(directory:str,
+                        album:str|None, title:str|None, artist:str|None,
+                        rename_with_number:bool=False,
+                        clean_record:bool=False,
+                        reverse_disc_and_track:bool=False,
+                        max_track_number:int=99,
+                        dry_run:bool=False):
+
+    mp3_files:list[str] = os.listdir(directory) # type: ignore
+
+    mp3_files_in_order = filter_and_order(directory, mp3_files) # type:ignore
+    max_seen_track_number = 1
     for i, file_name in enumerate(mp3_files_in_order):
         name_without_ext = file_name[:-4]
         parts = split_in_strings_and_numbers(name_without_ext)
@@ -113,7 +129,7 @@ def main():
         (disc_number,
          track_number) = extract_disc_and_track_number_from_split_name(parts,
                                                                        i + 1)
-        max_track_number = max(track_number, max_track_number)
+        max_seen_track_number = max(track_number, max_seen_track_number)
 
     files_with_numbers:dict[str,tuple[int,int]] = {}  # Mapping filename -> (disc_number, track_number)
     max_disc_number = 1
@@ -127,48 +143,48 @@ def main():
         (disc_number,
          track_number) = recompute_disc_and_track_to_keep_under_limits(
              disc_number, track_number,
-             max_track_number, args.max_track_number)
+             max_seen_track_number, max_track_number)
         max_disc_number = max(disc_number, max_disc_number)
         files_with_numbers[file_name] = (disc_number, track_number)
 
     for i, file_name in enumerate(mp3_files_in_order):
         (disc_number, track_number) = files_with_numbers[file_name]
 
-        mp3 = eyed3.load(os.path.join(args.directory, file_name))
+        mp3 = eyed3.load(os.path.join(directory, file_name)) # type:ignore
         assert mp3 is not None, f"Unknown file format for {file_name}"
-        if mp3.tag is None or args.clean_record: # type: ignore
+        if mp3.tag is None or clean_record: # type: ignore
             mp3.tag = eyed3.id3.tag.Tag() # type: ignore
-        if args.album:
-            mp3.tag.album = args.album # type: ignore
-        if args.artist:
-            mp3.tag.artist = args.artist # type: ignore
+        if album:
+            mp3.tag.album = album # type: ignore
+        if artist:
+            mp3.tag.artist = artist # type: ignore
         mp3.tag.genre = "Audiobook" # type: ignore
-        if args.title:
-            new_title = "%03d - %s" % ((i + 1), args.title)
+        if title:
+            new_title = "%03d - %s" % ((i + 1), title)
             mp3.tag.title = new_title # type: ignore
 
 
-        new_file_name = "%03d - %s.mp3" % ((i + 1), args.title)
+        new_file_name = "%03d - %s.mp3" % ((i + 1), title)
         print("#%d.%d\t%s" % (disc_number, track_number, file_name), end="")
-        if args.rename_with_number and file_name != new_file_name:
+        if rename_with_number and file_name != new_file_name:
             print("\t->\t%s" % new_file_name)
         else:
             print()
 
-        if args.reverse_disc_and_track:
+        if reverse_disc_and_track:
             # OPPOSITE SINCE SANDISK SPORT PLUS HAS A MORONIC SORTING
             # ALGORITHM
-            mp3.tag.track_num = (disc_number, max_disc_number)
-            mp3.tag.disc_num = track_number
+            mp3.tag.track_num = (disc_number, max_disc_number) # type:ignore
+            mp3.tag.disc_num = track_number # type:ignore
         else:
-            mp3.tag.track_num = track_number
-            mp3.tag.disc_num = (disc_number, max_disc_number)
+            mp3.tag.track_num = track_number # type:ignore
+            mp3.tag.disc_num = (disc_number, max_disc_number) # type:ignore
 
-        if not args.dry_run:
-            mp3.tag.save()
-            if args.rename_with_number and file_name != new_file_name:
-                os.rename(os.path.join(args.directory, file_name),
-                          os.path.join(args.directory, new_file_name))
+        if not dry_run:
+            mp3.tag.save() # type:ignore
+            if rename_with_number and file_name != new_file_name:
+                os.rename(os.path.join(directory, file_name),
+                          os.path.join(directory, new_file_name))
 #        else:
 #            print(mp3.get_tags())
 
